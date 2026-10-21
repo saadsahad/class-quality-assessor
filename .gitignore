@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+.pytest_cache/
+calib_out/
+.env
+.streamlit/secrets.toml
+*.mp4
+*.mov
+*.mkv
+*.webm
+*.vtt
+*.zip
+.claude/
+.vscode/
+.DS_Store

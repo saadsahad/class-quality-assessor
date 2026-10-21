@@ -1,0 +1,13 @@
+[server]
+maxUploadSize = 1000
+enableXsrfProtection = false  # uploads fail inside the Hugging Face iframe otherwise; see README
+headless = true
+
+[logger]
+level = "warning"
+
+[browser]
+gatherUsageStats = false
+
+[client]
+showErrorDetails = "none"
