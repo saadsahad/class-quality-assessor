@@ -205,3 +205,25 @@ def test_borderline_band():
     assert borderline(3.2) == ("Good", "Excellent")  # 0.20 below the 3.4 cut
     assert borderline(3.0) == ("Average", "Good")  # exactly 0.25 from the 2.75 cut counts as borderline
     assert borderline(3.05) is None  # 0.30 and 0.35 from the nearest cuts
+
+
+def test_allowlisted_words_never_masked_even_if_reported_as_names():
+    from qa.privacy import Masker
+
+    m = Masker({"video", "rook", "queen", "check"})
+    out = m.text("The video was choppy today, let's check the rook and protect the queen")
+    assert out == "The video was choppy today, let's check the rook and protect the queen"
+
+
+def test_real_names_still_masked_alongside_allowlist():
+    from qa.privacy import Masker
+
+    m = Masker({"video", "Aarav"})
+    out = m.text("The video was choppy while Aarav was speaking")
+    assert "video" in out and "Aarav" not in out and "[Name A]" in out
+
+
+def test_names_from_labels_excludes_allowlisted_tokens():
+    from qa.privacy import names_from_labels
+
+    assert names_from_labels(["Video's iPad", "Rook Device"]) == {"device"}

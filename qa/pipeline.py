@@ -67,7 +67,9 @@ def assess_cues(
             "judge_score": c.score,
             "rationale": c.rationale,
             "evidence": kept,
+            "verified_count": len(kept),
             "dropped": len(dropped),
+            "thin_evidence": score is not None and len(kept) < 2,
             "note": note,
         }
     masker = Masker(names_from_labels(label_map) | set(judgement.names_mentioned))

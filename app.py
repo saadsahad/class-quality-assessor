@@ -102,16 +102,29 @@ def render(r: dict):
         with st.expander(f"{LABELS[name]}: {score}{tag}"):
             if c["note"] != "ok":
                 st.caption(c["note"])
+            if c["thin_evidence"]:
+                st.caption("⚠️ Thin evidence: fewer than 2 verified quotes support this score.")
             st.write(c["rationale"])
             for e in c["evidence"]:
                 who = f", {e['speaker']}" if t["has_speakers"] else ""
                 st.markdown(f"> {e['quote']}  \n> <small>{int(e['ts'] // 60):02d}:{int(e['ts'] % 60):02d}{who}</small>", unsafe_allow_html=True)
-            if c["dropped"]:
-                st.caption(f"{c['dropped']} quote(s) could not be confirmed in the transcript and were discarded.")
+            st.caption(f"{c['verified_count']} quote(s) verified, {c['dropped']} discarded (could not be confirmed in the transcript).")
 
     with st.expander("Class signals"):
-        if r["signals"]:
-            st.json(r["signals"])
+        sig = r["signals"]
+        if sig:
+            table = (
+                "| Signal | Value |\n|---|---|\n"
+                f"| Class length | {sig.get('duration_min', '–')} min |\n"
+                f"| Tutor talk share | {round(sig['most_talkative_share'] * 100) if sig.get('most_talkative_share') is not None else '–'}% |\n"
+                f"| Words per minute | {sig.get('words_per_min', '–')} |\n"
+                f"| Questions per 10 min | {sig.get('questions_per_10min', '–')} |\n"
+                f"| Quiet time | {sig.get('dead_air_pct', '–')}% |\n"
+                f"| Speakers heard | {sig.get('distinct_speaker_labels', '–')} |\n"
+            )
+            st.markdown(table)
+        elif t["source"] == "whisper":
+            st.caption("These signals need speaker labels, which automatic transcripts don't have.")
         if r["media_segments"]:
             st.caption("Played media (excluded from evidence): " + ", ".join(f"{m['start']}–{m['end']}" for m in r["media_segments"]))
     st.caption(

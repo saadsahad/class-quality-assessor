@@ -7,12 +7,12 @@ APP = str(pathlib.Path(__file__).resolve().parent.parent / "app.py")
 FAKE = {
     "rating": {"grade": "Good", "weighted": 2.85, "borderline": ("Average", "Good"), "penalty": 0.0},
     "criteria": {
-        "rapport_start": {"score": 3, "judge_score": 3, "rationale": "Greets [Name A].", "evidence": [{"quote": "hello [Name A]", "ts": 65, "speaker": "S1"}], "dropped": 1, "note": "ok", "in_grade": True},
-        "welcome_new": {"score": None, "judge_score": None, "rationale": "none", "evidence": [], "dropped": 0, "note": "ok", "in_grade": True},
-        "warmth_energy": {"score": 2, "judge_score": 4, "rationale": "x", "evidence": [], "dropped": 0, "note": "capped from 4: no verified quote", "in_grade": True},
-        "fair_turns": {"score": 4, "judge_score": 4, "rationale": "x", "evidence": [], "dropped": 0, "note": "ok", "in_grade": False},
-        "lesson_close": {"score": 3, "judge_score": 3, "rationale": "x", "evidence": [], "dropped": 0, "note": "ok", "in_grade": True},
-        "checklist": {"score": 3, "judge_score": 3, "rationale": "x", "evidence": [], "dropped": 0, "note": "ok", "in_grade": True},
+        "rapport_start": {"score": 3, "judge_score": 3, "rationale": "Greets [Name A].", "evidence": [{"quote": "hello [Name A]", "ts": 65, "speaker": "S1"}], "dropped": 1, "note": "ok", "in_grade": True, "verified_count": 1, "thin_evidence": True},
+        "welcome_new": {"score": None, "judge_score": None, "rationale": "none", "evidence": [], "dropped": 0, "note": "ok", "in_grade": True, "verified_count": 0, "thin_evidence": False},
+        "warmth_energy": {"score": 2, "judge_score": 4, "rationale": "x", "evidence": [], "dropped": 0, "note": "capped from 4: no verified quote", "in_grade": True, "verified_count": 0, "thin_evidence": True},
+        "fair_turns": {"score": 4, "judge_score": 4, "rationale": "x", "evidence": [], "dropped": 0, "note": "ok", "in_grade": False, "verified_count": 0, "thin_evidence": True},
+        "lesson_close": {"score": 3, "judge_score": 3, "rationale": "x", "evidence": [], "dropped": 0, "note": "ok", "in_grade": True, "verified_count": 0, "thin_evidence": True},
+        "checklist": {"score": 3, "judge_score": 3, "rationale": "x", "evidence": [], "dropped": 0, "note": "ok", "in_grade": True, "verified_count": 0, "thin_evidence": True},
     },
     "signals": {"duration_min": 45},
     "media_segments": [],
