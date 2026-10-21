@@ -65,7 +65,9 @@ Criteria, with what each score looks like (use 4 only when the behaviour is show
 Rules:
 - Every evidence quote must be copied verbatim from the transcript (5-25 words) with the timestamp where it starts. Give 1-3 quotes per scored criterion; quotes that cannot be found are discarded.
 - Refer to children as Student A, B, C in rationales; do not repeat their names.
-- Set a criterion to null rather than guess when the recording does not show it."""
+- Use the full 1-4 scale. Do not default to the middle: a clearly weak or clearly strong class should get a 1 or a 4, not a cautious 2 or 3.
+- For rapport_start and lesson_close only, use null ONLY when the coverage line above says that part is absent from the transcript. If the opening or closing is present (or its coverage is unclear) and the tutor simply did not build rapport or did not close the lesson, that is a real teaching gap: score it 1, do not use null to avoid judging it.
+- For every other criterion, set it to null rather than guess when the recording does not show it (e.g. welcome_new when nobody new joins)."""
 
 
 def _pricing(model: str) -> tuple[float, float]:

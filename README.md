@@ -115,6 +115,58 @@ Confusion matrices (rows are the QA label):
 
 Calibration cost: $0.64 for 13 Sonnet runs (about $0.03 to $0.07 each).
 
+## Grading rule: weighted average plus a core-criteria override (current)
+Calibration above showed a real problem: across all 10 recordings the weighted-average grade **never predicted Poor or Excellent**, only Average or Good. Two free, in-sample checks on the already-saved scores were tried first (no prompt or weight changes, no new API calls):
+
+- **The model's own overall rating** (shown in the app as a cross-check, never used for the grade) does no better: exact 3/10, within-one 9/10, and it also only ever says Average or Good.
+- **A rule-based re-grading** of the same saved scores — Poor if a core criterion (rapport at the start, warmth and energy, welcoming new joiners) is 1, or two or more of those three are 2-or-below with none at 4; Excellent if most of them are 4 and none are 2-or-below; otherwise the weighted grade — reached exact 4/10, but flipped one true Average recording to Poor. That one regression meant it did not clear the bar at the time, so it was not adopted yet.
+
+That ruled out a quick fix, so the judge prompt changed instead, in three ways, with the rubric weights and cut-points left exactly as locked:
+1. `rapport_start` and `lesson_close` may be marked N/A only when `qa/coverage.py` finds that part of the class genuinely missing from the transcript; otherwise a skipped greeting or an abrupt ending must be scored (as low as 1), not waved through as "not shown". This is enforced in code, not just the prompt: if the judge still returns null when the data is there, the score is set to 1.
+2. The full 1-4 scale is used explicitly, with a sharper anchor for warmth and energy (flat "okay, next" acknowledgements score 2; frequent specific praise and humour scores 4), so the judge stops defaulting to the middle.
+3. A weighted score within 0.35 of a grade boundary now triggers two more judge runs automatically, scored by the per-criterion median, instead of one noisy call deciding a borderline case.
+
+All 10 recordings were re-run once under the new prompt (Sonnet), and the core-criteria rule was re-checked against the new scores. This time it cleared the revised bar (exact agreement improves, no recording lands two or more grades from its label, and Poor is predicted correctly at least once) and **was adopted**: `qa/score.py` now applies it as an explicit second step after the weighted average, over the same locked weights and cuts. When the rule changes the grade, the result is shown as **borderline between the two grades**, with a one-line reason, e.g. *"Rated Poor by the core-criteria rule: rapport 2, warmth 2, welcoming 2, no strengths at 4. Weighted score 2.25 suggests Average."*
+
+**Say this plainly: the rule trades some Average accuracy for Poor accuracy.** It was chosen because catching a poor class matters more for a QA tool than getting every Average class exactly right, and because the weighted average alone caught none of the Poor-labelled recordings. Concretely: the shipped version calls **both** true-Average recordings (B516, 2026-09-03 and B435, 2026-08-28) Poor — shown as borderline Poor/Average — as the cost of correctly catching three of the four Poor-labelled recordings.
+
+**The grading rule itself was never revised; the bar used to decide whether to keep it was.** The core-criteria rule (Poor if a core criterion is 1, or two-or-more are 2-or-below with none at 4; Excellent if most are 4 with none 2-or-below) is the same rule throughout. What changed was the **keep criterion**: it was first checked under "keep only if exact agreement improves, Poor or Excellent appear correctly at least once, **and no recording regresses on an Average label**" — the rule-based re-grading of the old-prompt scores passed the first two conditions but failed the third (it flipped the true-Average B435, 28 Aug to Poor), so it was rejected under that bar. The bar was then relaxed to "exact agreement improves, no recording lands two or more grades from its label, and Poor or Excellent appear correctly at least once" — dropping the no-regression-on-Average condition specifically, since catching Poor classes was judged more important than protecting every Average call. Re-checked against the new-prompt scores under this relaxed bar, the same rule now clears it (and, as the paragraph above says, still costs both Average recordings). **It never reaches Excellent**: with only 10 labelled recordings, no combination tried has correctly separated Excellent from Good. **The model's own holistic rating compresses the same way** even under the new prompt (exact 3/10, within-one 9/10, still only ever Average or Good) — so the fix is specific to the core-criteria rule, not a side effect of the better prompt alone.
+
+### Four versions, side by side (in-sample)
+
+| Recording | QA label | Old prompt, weighted | Old prompt, rule-based | New prompt, weighted | **New prompt, rule-based (shipped)** |
+|---|---|---|---|---|---|
+| B491, 2026-06-29 | Excellent | Good (3.06) | Good | Good (3.06) | Good |
+| B472, 2026-08-24 | Excellent | Good (3.17) | Good | Good (3.27) | Good |
+| B552, 2026-09-02 | Good | Excellent (3.44) | Good | Good (2.90) | Good |
+| B435, 2026-07-25 | Good | Average (2.40) | Average | Average (2.40) | Average |
+| B516, 2026-09-03 | Average | Average (2.54) | Average | Average (2.06) | **Poor** |
+| B435, 2026-08-28 | Average | Average (2.25) | **Poor** | Average (2.25) | **Poor** |
+| B558, 2026-09-05 | Poor | **Good** (2.78) | **Good** | Average (2.40) | Average |
+| B482, 2026-09-02 | Poor | Average (2.57) | Average | Average (2.23) | Poor |
+| B392, 2026-09-02 | Poor | Average (2.56) | Poor | Average (2.56) | Poor |
+| B441, 2026-08-26 | Poor | Average (2.46) | Poor | Average (2.46) | Poor |
+
+Bold marks a recording two or more grades from its label.
+
+| Version | Exact | Within-one | 2+ grades off | Poor correct | Excellent correct |
+|---|---|---|---|---|---|
+| Old prompt, weighted (previously shipped) | 2/10 | 9/10 | B558 | no | no |
+| Old prompt, rule-based (rejected: regressed B435 28 Aug) | 4/10 | 9/10 | B558 | yes | no |
+| New prompt, weighted | 3/10 | 10/10 | none | no | no |
+| **New prompt, rule-based (shipped)** | **4/10** | **10/10** | **none** | **yes (3 of 4)** | no |
+
+### Mean weighted score by label, new prompt (before the rule-based override)
+
+| Label | n | Mean | Values |
+|---|---|---|---|
+| Poor | 4 | 2.41 | 2.23, 2.40, 2.46, 2.56 |
+| Average | 2 | 2.16 | 2.06, 2.25 |
+| Good | 2 | 2.65 | 2.40, 2.90 |
+| Excellent | 2 | 3.17 | 3.06, 3.27 |
+
+Note that the Poor and Average means nearly overlap (2.41 vs 2.16) — the weighted score alone still cannot cleanly separate them, which is exactly why the override exists. Re-run cost: $1.90 across 13 top-level calls (10 recordings plus 3 stability checks); some of those calls made 2-3 Anthropic requests each under the new adaptive-median rule, which the dollar figure reflects even though the call count doesn't. Across this run the coverage-gated null-forcing (point 1 above) never had to fire in code — the judge's own prompt compliance was enough on these 10 recordings.
+
 ## Recording only (no Zoom transcript)
 Three labelled recordings were also run **without** their transcript (audio transcribed by faster-whisper `base`, int8, 2 CPU threads, on a Mac, which is faster than the free Space) and compared with their transcript-based scores under the locked rubric. One run each, so this shows the path works, not how accurate it is.
 

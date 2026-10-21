@@ -26,3 +26,4 @@ VERIFY_MIN_WORDS = 3
 CAMERA_PENALTY = 0.5
 
 BORDERLINE_BAND = 0.25  # weighted score within this of a cut is shown as borderline between the two grades
+ADAPTIVE_MEDIAN_BAND = 0.35  # weighted score within this of a cut triggers 2 extra judge runs, scored by median

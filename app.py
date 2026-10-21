@@ -68,11 +68,14 @@ def render(r: dict):
     else:
         b = rating.get("borderline")
         st.subheader(f"{rating['grade']}" + (f" (borderline {b[0]} / {b[1]})" if b else ""))
-        st.caption(
-            f"Weighted score {rating['weighted']} of 4. "
-            + ("Within 0.25 of a grade boundary, so treat the grade as uncertain. " if b else "")
-            + "Calculated in code from the criterion scores below, not taken from the model's own verdict."
-        )
+        if rating.get("override_reason"):
+            st.caption(rating["override_reason"])
+        else:
+            st.caption(
+                f"Weighted score {rating['weighted']} of 4. "
+                + ("Within 0.25 of a grade boundary, so treat the grade as uncertain. " if b else "")
+                + "Calculated in code from the criterion scores below, not taken from the model's own verdict."
+            )
 
     t = r["transcript"]
     if t["source"] == "whisper":

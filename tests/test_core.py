@@ -227,3 +227,80 @@ def test_names_from_labels_excludes_allowlisted_tokens():
     from qa.privacy import names_from_labels
 
     assert names_from_labels(["Video's iPad", "Rook Device"]) == {"device"}
+
+
+def test_coverage_gated_null_forced_to_one_when_part_is_present():
+    from qa import pipeline
+    from qa.judge import Criterion, Judgement
+
+    j = Judgement(
+        media_segments=[], estimated_students=2, names_mentioned=[],
+        criteria=[
+            Criterion(name="rapport_start", score=None, rationale="no greeting shown", evidence=[]),
+            Criterion(name="lesson_close", score=None, rationale="abrupt stop", evidence=[]),
+        ],
+        holistic_rating="Average", holistic_reason="x",
+    )
+    import qa.pipeline as pl
+
+    pl.run_judge = lambda *a, **k: (j, 0.0)
+    r = pl.assess_vtt(VTT)  # VTT fixture covers start and end (greet + goodbye present)
+    assert r["criteria"]["rapport_start"]["score"] == 1
+    assert "scored 1" in r["criteria"]["rapport_start"]["note"]
+    assert r["criteria"]["lesson_close"]["score"] == 1
+
+
+def test_coverage_gated_null_stays_na_when_asr_partial():
+    from qa import pipeline
+    from qa.judge import Criterion, Judgement
+
+    j = Judgement(
+        media_segments=[], estimated_students=2, names_mentioned=[],
+        criteria=[Criterion(name="rapport_start", score=None, rationale="x", evidence=[])],
+        holistic_rating="Average", holistic_reason="x",
+    )
+    pipeline.run_judge = lambda *a, **k: (j, 0.0)
+    r = pipeline.assess_vtt(VTT, transcript_info={"partial": True, "covered_pct": 40, "mode": "sampled"})
+    assert r["criteria"]["rapport_start"]["score"] is None
+    assert "low confidence" in r["criteria"]["rapport_start"]["note"]
+
+
+def test_adaptive_median_of_3_triggers_on_borderline_and_not_otherwise(monkeypatch):
+    from qa import pipeline
+    from qa.judge import Criterion, Evidence, Judgement
+    from qa.rubric import CRITERIA
+
+    # a verified quote on every criterion so the "no verified quote" cap never interferes with the median
+    ev = [Evidence(quote="so happy to see you all today", ts="00:00:09", speaker="S1")]
+
+    def judgement_with(rapport, base=2):
+        return Judgement(
+            media_segments=[], estimated_students=2, names_mentioned=[],
+            criteria=[
+                Criterion(name=k, score=rapport if k == "rapport_start" else base, rationale="x", evidence=ev)
+                for k in CRITERIA
+            ],
+            holistic_rating="Good", holistic_reason="x",
+        )
+
+    calls = {"n": 0}
+
+    def fake_judge(*a, **k):
+        calls["n"] += 1
+        # alternate 1 and 2 on rapport_start across the 3 runs so the median (2) differs from run 1 (1)
+        return judgement_with([1, 2, 1][(calls["n"] - 1) % 3]), 0.01
+
+    monkeypatch.setattr(pipeline, "run_judge", fake_judge)
+    calls["n"] = 0
+    r = pipeline.assess_vtt(VTT)
+    assert r["median_of_3"] is True and calls["n"] == 3
+    assert r["criteria"]["rapport_start"]["score"] == 1  # median of [1, 2, 1]
+
+    def fake_judge_far(*a, **k):
+        calls["n"] += 1
+        return judgement_with(4, base=4), 0.01  # every criterion 4 -> weighted (4.0) far from any cut, no retry needed
+
+    monkeypatch.setattr(pipeline, "run_judge", fake_judge_far)
+    calls["n"] = 0
+    r2 = pipeline.assess_vtt(VTT)
+    assert r2["median_of_3"] is False and calls["n"] == 1

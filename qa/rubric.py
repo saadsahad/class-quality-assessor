@@ -45,7 +45,7 @@ ANCHORS = {
         4: "Greets children individually by name, brief personal or friendly exchange, warm tone before any content.",
         3: "Friendly greeting and introduction, but mostly generic to the group; little one-to-one exchange.",
         2: "Perfunctory greeting, moves to content quickly.",
-        1: "Goes straight into revision or the lesson with no greeting or rapport building.",
+        1: "Goes straight into revision or the lesson with no greeting or rapport building, even though the opening is in the transcript.",
     },
     "welcome_new": {
         4: "Notices the new joiner, invites a self-introduction, gives time for it and includes them in activities.",
@@ -54,9 +54,9 @@ ANCHORS = {
         1: "New joiner is ignored or left out. (null if nobody new joins)",
     },
     "warmth_energy": {
-        4: "Consistently energetic and cheerful; specific praise, encourages hesitant children, light humour.",
-        3: "Pleasant and encouraging, but energy is uneven.",
-        2: "Flat or low energy; praise is generic; little reaction to the children.",
+        4: "Frequent specific praise (naming what the child did well) and some humour or playfulness; energy is consistent.",
+        3: "Pleasant and encouraging, but energy is uneven or praise is mostly generic.",
+        2: "Flat acknowledgements ('okay, next', 'good', moving straight on) with little real praise; low reaction to the children.",
         1: "Dull, impatient or unresponsive; children appear disengaged.",
     },
     "fair_turns": {
@@ -69,7 +69,7 @@ ANCHORS = {
         4: "Recaps what was learned, gives homework or next steps, and ends with a clear, warm goodbye.",
         3: "Clear ending with some recap or next steps.",
         2: "Ends abruptly with a thin recap.",
-        1: "No conclusion; the class just stops.",
+        1: "No conclusion; the class just stops, even though the ending is in the transcript.",
     },
     "checklist": {
         4: "Many varied questions to the class, clear lesson structure, related videos or materials used well.",
