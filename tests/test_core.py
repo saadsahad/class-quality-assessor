@@ -305,3 +305,60 @@ def test_adaptive_median_of_3_triggers_on_borderline_and_not_otherwise(monkeypat
     calls["n"] = 0
     r2 = pipeline.assess_vtt(VTT)
     assert r2["median_of_3"] is False and calls["n"] == 1
+
+
+def test_fuzzy_match_catches_a_close_misspelling_with_a_shared_tag():
+    from qa.privacy import Masker
+
+    m = Masker({"ria"})
+    out = m.text("Great move Riya! Riya, your turn again")
+    assert "Riya" not in out
+    tags = set(__import__("re").findall(r"\[Name [A-Z]\]", out))
+    assert len(tags) == 1  # both spellings of the same name share one tag
+
+
+def test_fuzzy_match_has_a_limit_not_every_misspelling_is_caught():
+    from qa.privacy import Masker
+
+    # "riya" vs "reeya" scores well below the 80 ratio threshold - fuzzy alone won't catch this one,
+    # which is exactly why the judge is now asked to list every spelling variant itself (layer 1).
+    from rapidfuzz import fuzz
+
+    assert fuzz.ratio("riya", "reeya") < 80
+    m = Masker({"riya"})
+    assert "Reeya" in m.text("Reeya solved the puzzle on her own today")
+
+
+def test_fuzzy_pass_respects_the_allowlist():
+    from qa.privacy import Masker
+
+    m = Masker({"boad"})  # contrived near-match to "board"
+    assert m.text("the board was a bit choppy") == "the board was a bit choppy"
+
+
+def test_direct_address_masks_an_unlisted_name(capsys):
+    from qa.privacy import Masker
+
+    m = Masker(set())  # no known names at all
+    out = m.text("Hi Dhruv, can you show me the knight move?")
+    assert "Dhruv" not in out and "[Name A]" in out
+
+
+def test_direct_address_variants_and_allowlist():
+    from qa.privacy import Masker
+
+    m = Masker(set())
+    out = m.text("Hey Aarav. Say hi to Priya. Very good, Kabir. Thanks, Meera.")
+    for name in ("Aarav", "Priya", "Kabir", "Meera"):
+        assert name not in out
+    # allow-listed words in the same positions must NOT be masked
+    out2 = m.text("Very good, Checkmate! Say hi to Video.")
+    assert "Checkmate" in out2 and "Video" in out2
+
+
+def test_direct_address_does_not_fire_on_an_ordinary_mid_sentence_word():
+    from qa.privacy import Masker
+
+    m = Masker(set())
+    out = m.text("Hi, We are going to start now with the board")
+    assert "We" in out  # "We" is not immediately followed by punctuation, so it's not a direct address

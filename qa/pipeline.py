@@ -134,6 +134,7 @@ def assess_cues(
         "coverage": cov,
         "model_cross_check": {"rating": judgement.holistic_rating, "reason": judgement.holistic_reason},
         "median_of_3": runs == 3,
+        "judge_calls": runs,
         "cost_usd": round(total_cost, 4),
     }
     return masker.obj(result)  # nothing unmasked leaves this function

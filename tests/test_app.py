@@ -19,9 +19,11 @@ FAKE = {
     "coverage": {"start": "present", "end": "present", "media_s": 2700},
     "model_cross_check": {"rating": "Good", "reason": "x"},
     "cost_usd": 0.0612,
+    "judge_calls": 1,
     "transcript": {"source": "zoom_vtt", "has_speakers": True, "partial": False},
 }
 ASR = {**FAKE, "signals": {}, "transcript": {"source": "whisper", "has_speakers": False, "partial": True, "covered_pct": 62, "budget_s": 600, "language": "en"}}
+MEDIAN = {**FAKE, "judge_calls": 3, "cost_usd": 0.18}
 
 
 def _app(monkeypatch, password="pw"):
@@ -115,3 +117,23 @@ def test_link_input_enables_button_and_is_passed_as_media(monkeypatch):
     assert not at.button[0].disabled
     at.button[0].click().run()
     assert seen == {"vtt": None, "media": "https://drive.google.com/file/d/abc/view"}
+
+
+def test_cost_caption_shows_total_calls_and_per_call_limit(monkeypatch):
+    monkeypatch.setattr("qa.service.assess_upload", lambda *a, **k: FAKE)
+    at = _app(monkeypatch)
+    at.text_input[0].set_value("pw").run()
+    at.file_uploader[0].upload("class.vtt", b"WEBVTT\n").run()
+    at.button[0].click().run()
+    caption = " ".join(c.value for c in at.caption)
+    assert "$0.061" in caption and "1 judge call" in caption and "$0.20 limit applies per call" in caption
+
+
+def test_cost_caption_shows_median_of_3_total_and_call_count(monkeypatch):
+    monkeypatch.setattr("qa.service.assess_upload", lambda *a, **k: MEDIAN)
+    at = _app(monkeypatch)
+    at.text_input[0].set_value("pw").run()
+    at.file_uploader[0].upload("class.vtt", b"WEBVTT\n").run()
+    at.button[0].click().run()
+    caption = " ".join(c.value for c in at.caption)
+    assert "$0.180" in caption and "3 judge calls" in caption and "median" in caption and "up to $0.60" in caption

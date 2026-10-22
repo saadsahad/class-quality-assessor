@@ -41,7 +41,7 @@ class Criterion(BaseModel):
 class Judgement(BaseModel):
     media_segments: list[MediaSegment]
     estimated_students: int
-    names_mentioned: list[str]  # first names of anyone in the class (children, tutor, parents), for local masking
+    names_mentioned: list[str]  # every first name AND every spelling variant/misspelling of it seen, for local masking
     criteria: list[Criterion]
     holistic_rating: Literal["Poor", "Average", "Good", "Excellent"]
     holistic_reason: str
@@ -53,7 +53,7 @@ The transcript is Zoom's. Speaker labels are devices, pseudonymised S1, S2... in
 
 Work in this order:
 1. media_segments: time ranges where played media or a video seems to be speaking (polished narration, long unbroken monologue unlike the tutor's usual style). Never use such text as evidence about the tutor.
-2. estimated_students and names_mentioned: every personal first name that appears in the transcript or labels (used only to mask names locally).
+2. estimated_students and names_mentioned: every personal first name that appears in the transcript or labels, used only to mask names locally. The transcript is Zoom's own automatic transcription, so the same name is often spelled differently in different places (e.g. "Riya", "Ria", "Reeya") - list EVERY spelling variant you see as its own entry, not just one canonical spelling per child.
 3. Score each criterion {SCALE}. Judge fair turns relative to the number of students, mainly from who the tutor addresses by name and calls on, not from label counts alone.
 4. holistic_rating: your own overall view, shown only as a cross-check.
 

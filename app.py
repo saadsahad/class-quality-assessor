@@ -130,9 +130,16 @@ def render(r: dict):
             st.caption("These signals need speaker labels, which automatic transcripts don't have.")
         if r["media_segments"]:
             st.caption("Played media (excluded from evidence): " + ", ".join(f"{m['start']}–{m['end']}" for m in r["media_segments"]))
+    n_calls = r.get("judge_calls", 1)
+    calls_txt = (
+        f"3 judge calls (the score was within 0.35 of a grade boundary, so it was re-checked and the median taken)"
+        if n_calls == 3
+        else "1 judge call"
+    )
     st.caption(
         f"Model's own overall view (not used for the grade): {r['model_cross_check']['rating']}.  \n"
-        f"Cost of this run: ${r['cost_usd']:.3f} (limit ${MAX_RUN_USD:.2f}) with {JUDGE_MODEL}."
+        f"Cost of this run: ${r['cost_usd']:.3f} total over {calls_txt}, with {JUDGE_MODEL}. "
+        f"The ${MAX_RUN_USD:.2f} limit applies per call, so a 3-call run can cost up to ${3 * MAX_RUN_USD:.2f}."
     )
 
 
@@ -142,7 +149,7 @@ st.title("Class quality assessor")
 st.caption(
     "Upload a Zoom class transcript to get a Poor / Average / Good / Excellent rating with checked evidence. "
     "Nothing is stored. Uploaded files are processed in memory and in a temporary folder that is deleted, "
-    "names are masked in the results, and only transcript text goes to the model."
+    "names are masked where detected (best effort), and only transcript text goes to the model."
 )
 
 vtt = st.file_uploader("Zoom transcript (.vtt). Recommended: faster and more accurate", type=["vtt"])
