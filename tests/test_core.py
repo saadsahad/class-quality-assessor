@@ -198,13 +198,14 @@ def test_joiner_hint_labels_and_times_only():
 
 
 def test_borderline_band():
+    # Cuts are [(2.0, Poor), (2.75, Average), (3.0, Good)] (Excellent cut moved to 3.0 post-hoc).
     from qa.score import borderline
 
     assert borderline(2.85) == ("Average", "Good")  # 0.10 above the 2.75 cut
     assert borderline(2.55) == ("Average", "Good")  # 0.20 below it
-    assert borderline(3.2) == ("Good", "Excellent")  # 0.20 below the 3.4 cut
-    assert borderline(3.0) == ("Average", "Good")  # exactly 0.25 from the 2.75 cut counts as borderline
-    assert borderline(3.05) is None  # 0.30 and 0.35 from the nearest cuts
+    assert borderline(2.95) == ("Good", "Excellent")  # 0.05 below the 3.0 cut
+    assert borderline(3.0) == ("Good", "Excellent")  # exactly at the 3.0 cut counts as borderline
+    assert borderline(2.49) is None  # 0.26 and 0.49 from the nearest cuts
 
 
 def test_allowlisted_words_never_masked_even_if_reported_as_names():

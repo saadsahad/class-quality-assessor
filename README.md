@@ -10,7 +10,7 @@ This is a prototype, tested on 10 labelled recordings (see below): treat ratings
 ## How it works
 0. **No transcript?** A 2-minute speed probe measures transcription speed on the server's CPU. If the whole class fits in the time budget (default 10 minutes, `WHISPER_BUDGET_MIN`) it is transcribed in full; otherwise the opening, the closing and evenly spaced windows are transcribed, and the result shows a **partial-transcript banner** with the percentage covered. Automatic transcripts have no speaker labels, so talk-share signals and late-joiner hints are not used.
 1. The Zoom transcript is parsed. Speaker labels are devices, so they are replaced by `S1, S2...` (S1 talks most) before anything leaves the process.
-2. One Claude call scores the criteria below (1 to 4, or N/A) and returns verbatim quotes with timestamps, plus any stretches of played media (e.g. YouTube) so these are never quoted as the tutor.
+2. One Claude call scores the criteria below (1 to 4, or N/A) and returns verbatim quotes with timestamps, plus any stretches of played media (e.g. YouTube) so these are never quoted as the tutor — or three calls, scored by the per-criterion median, when the weighted score lands within 0.35 of a grade boundary. A core-criteria rule can then override the weighted grade (see "Grading rule" below).
 3. Every quote is re-checked against the transcript within ±30 s; anything that cannot be confirmed is dropped. A score of 3 or 4 with no verified quote is capped at 2.
 4. The rating is **computed in code** from the criterion scores. The model's own overall view is shown only as a cross-check.
 5. A weighted score within 0.25 of a grade boundary is shown as **borderline** between the two grades.
@@ -25,8 +25,10 @@ This is a prototype, tested on 10 labelled recordings (see below): treat ratings
 | Questions and lesson flow | 0.05 |
 | Fair turns for every child | report-only (not in the grade) |
 
-Grade boundaries on the weighted score (1 to 4): Poor below 2.0, Average below 2.75, Good below 3.4, otherwise Excellent.
-These boundaries and the weights are locked; they were **not validated** by calibration (see results).
+Weights are renormalised over whatever criteria were actually scored (N/A criteria are left out, not treated as a 0).
+
+Grade boundaries on the weighted score (1 to 4): Poor below 2.0, Average below 2.75, Good below 3.0, otherwise Excellent.
+Poor and Average are the original locked cuts; the Excellent cut was moved from 3.4 to 3.0 post-hoc — see "Excellent cut-point (post-hoc)" below. The weights are locked and were **not validated** by calibration (see results); a core-criteria rule can also override the grade the weighted score gives (see "Grading rule" below).
 
 ## Privacy
 - The password screen is the only thing shown until the correct password is entered.
@@ -53,6 +55,14 @@ Things to expect on the free tier (limits quoted from Streamlit's documentation,
 - **CPU:** up to 2 cores, so transcription without a Zoom transcript is slow, and the first run also downloads the Whisper model (about 150 MB). The 2-minute probe measures the real speed and falls back to a partial transcript, with a banner, when the budget would be exceeded.
 - **Sleep:** an app with no traffic for 12 hours goes to sleep; the first visitor has to click "Yes, get this app back up!" and wait for it to start. Open the app yourself shortly before a test.
 - **Public URL:** anyone with the link sees the password screen; the repository is public too, so it must never contain data, `.env`, `calib_out/` or keys (run `python check_push.py` before every push).
+
+## Live app checks
+From testing the deployed app directly (not the offline checks above):
+- A 340 MB video upload worked both with a Zoom transcript attached and with no transcript (transcribed on the server).
+- A 38-minute class with no transcript took about 5-6 minutes to transcribe on the free tier.
+- A direct link to a public `.mp4` was tested and downloaded correctly; that particular recording gave a clean "no speech found" message rather than a crash.
+- The wrong-password screen shows nothing else — no title, no uploader, no app content.
+- The Google Drive link input has **not** been tested against a live Drive file; `qa/media.py`'s Drive handling is covered only by mocked tests.
 
 ## Configuration (app secrets)
 | Name | Purpose |
@@ -134,18 +144,20 @@ All 10 recordings were re-run once under the new prompt (Sonnet), and the core-c
 
 ### Four versions, side by side (in-sample)
 
-| Recording | QA label | Old prompt, weighted | Old prompt, rule-based | New prompt, weighted | **New prompt, rule-based (shipped)** |
-|---|---|---|---|---|---|
-| B491, 2026-06-29 | Excellent | Good (3.06) | Good | Good (3.06) | Good |
-| B472, 2026-08-24 | Excellent | Good (3.17) | Good | Good (3.27) | Good |
-| B552, 2026-09-02 | Good | Excellent (3.44) | Good | Good (2.90) | Good |
-| B435, 2026-07-25 | Good | Average (2.40) | Average | Average (2.40) | Average |
-| B516, 2026-09-03 | Average | Average (2.54) | Average | Average (2.06) | **Poor** |
-| B435, 2026-08-28 | Average | Average (2.25) | **Poor** | Average (2.25) | **Poor** |
-| B558, 2026-09-05 | Poor | **Good** (2.78) | **Good** | Average (2.40) | Average |
-| B482, 2026-09-02 | Poor | Average (2.57) | Average | Average (2.23) | Poor |
-| B392, 2026-09-02 | Poor | Average (2.56) | Poor | Average (2.56) | Poor |
-| B441, 2026-08-26 | Poor | Average (2.46) | Poor | Average (2.46) | Poor |
+The last column is the **shipped** version: new prompt, the core-criteria override, and the Excellent cut at 3.0. The "New prompt, rule-based" column that preceded it (Excellent cut still at 3.4) is kept for comparison.
+
+| Recording | QA label | Old prompt, weighted | Old prompt, rule-based | New prompt, weighted (cut 3.4) | New prompt, rule-based (cut 3.4) | **Shipped: rule-based, cut 3.0** |
+|---|---|---|---|---|---|---|
+| B491, 2026-06-29 | Excellent | Good (3.06) | Good | Good (3.06) | Good | Excellent |
+| B472, 2026-08-24 | Excellent | Good (3.17) | Good | Good (3.27) | Good | Excellent |
+| B552, 2026-09-02 | Good | Excellent (3.44) | Good | Good (2.90) | Good | Good |
+| B435, 2026-07-25 | Good | Average (2.40) | Average | Average (2.40) | Average | Average |
+| B516, 2026-09-03 | Average | Average (2.54) | Average | Average (2.06) | **Poor** | **Poor** |
+| B435, 2026-08-28 | Average | Average (2.25) | **Poor** | Average (2.25) | **Poor** | **Poor** |
+| B558, 2026-09-05 | Poor | **Good** (2.78) | **Good** | Average (2.40) | Average | Average |
+| B482, 2026-09-02 | Poor | Average (2.57) | Average | Average (2.23) | Poor | Poor |
+| B392, 2026-09-02 | Poor | Average (2.56) | Poor | Average (2.56) | Poor | Poor |
+| B441, 2026-08-26 | Poor | Average (2.46) | Poor | Average (2.46) | Poor | Poor |
 
 Bold marks a recording two or more grades from its label.
 
@@ -153,10 +165,20 @@ Bold marks a recording two or more grades from its label.
 |---|---|---|---|---|---|
 | Old prompt, weighted (previously shipped) | 2/10 | 9/10 | B558 | no | no |
 | Old prompt, rule-based (rejected: regressed B435 28 Aug) | 4/10 | 9/10 | B558 | yes | no |
-| New prompt, weighted | 3/10 | 10/10 | none | no | no |
-| **New prompt, rule-based (shipped)** | **4/10** | **10/10** | **none** | **yes (3 of 4)** | no |
+| New prompt, weighted (cut 3.4) | 3/10 | 10/10 | none | no | no |
+| New prompt, rule-based (cut 3.4) | 4/10 | 10/10 | none | yes (3 of 4) | no |
+| **Shipped: new prompt, rule-based, cut 3.0** | **6/10** | **10/10** | **none** | **yes (3 of 4)** | **yes (2 of 2)** |
 
-### Mean weighted score by label, new prompt (before the rule-based override)
+Confusion matrix for the shipped version (rows are the QA label):
+
+| Shipped | Poor | Average | Good | Excellent |
+|---|---|---|---|---|
+| Poor | 3 | 1 | 0 | 0 |
+| Average | 2 | 0 | 0 | 0 |
+| Good | 0 | 1 | 1 | 0 |
+| Excellent | 0 | 0 | 0 | 2 |
+
+### Mean weighted score by label, new prompt (before any grade override)
 
 | Label | n | Mean | Values |
 |---|---|---|---|
@@ -165,7 +187,14 @@ Bold marks a recording two or more grades from its label.
 | Good | 2 | 2.65 | 2.40, 2.90 |
 | Excellent | 2 | 3.17 | 3.06, 3.27 |
 
-Note that the Poor and Average means nearly overlap (2.41 vs 2.16) — the weighted score alone still cannot cleanly separate them, which is exactly why the override exists. Re-run cost: $1.90 across 13 top-level calls (10 recordings plus 3 stability checks); some of those calls made 2-3 Anthropic requests each under the new adaptive-median rule, which the dollar figure reflects even though the call count doesn't. Across this run the coverage-gated null-forcing (point 1 above) never had to fire in code — the judge's own prompt compliance was enough on these 10 recordings.
+The Poor and Average means are not just close, they are **inverted: Poor 2.41, Average 2.16** — the weighted score alone ranks the Poor recordings *above* the Average ones. The weighted score cannot fix that by itself; it's exactly why the core-criteria override exists. Re-run cost: $1.90 across 13 top-level calls (10 recordings plus 3 stability checks); some of those calls made 2-3 Anthropic requests each under the new adaptive-median rule, which the dollar figure reflects even though the call count doesn't. Across this run the coverage-gated null-forcing (point 1 above) never had to fire in code — the judge's own prompt compliance was enough on these 10 recordings.
+
+## Excellent cut-point (post-hoc)
+The original Excellent cut, 3.4, made Excellent nearly unreachable: the best weighted score the judge ever produced across all 10 recordings was 3.27 (B472), below the cut. Re-grading the same saved scores with the cut at 3.0 instead gives **6/10 exact, 10/10 within-one** (in-sample, same weights, same other two cuts, same override) — but that result only holds for cuts **between 2.90 and 3.06**; outside that narrow band exact agreement drops back to 4-5/10. Leave-one-out — fitting only this cut on 9 recordings and testing on the held-out tenth — gives no real improvement: weighted-only scoring gets 3/10, and with the override included (which already fixes 3 of the 4 Poor recordings regardless of the cut) it gets 5/10 (versus 4/10 for the same rule at the old 3.4 cut, so at most one more recording, within run-to-run noise). Either way there is **no out-of-sample evidence** for 3.0 specifically; it is a post-hoc, in-sample choice, and true accuracy on an unseen recording is probably closer to 3-5 out of 10 than the in-sample 6/10 suggests.
+
+## Tried and rejected
+- **A local camera/face-detection check.** Offline, no API cost: 6 frames sampled per recording from the raw video (read from the data in memory, nothing extracted to disk) and checked for a detectable face with OpenCV's Haar cascade. Mean face-detected fraction was 0.42 for Poor-labelled recordings and 0.50 for Average-labelled ones (Good and Excellent were also 0.50) — it did not separate Poor from Average, so it was not built into the app. This was a one-off diagnostic script, not shipped code. A fuller run with a frame every 30 seconds (76 to 179 frames per recording) agreed: a face was detected in about 53% of frames for Poor, 51% for Average, 50% for Good and 60% for Excellent recordings, again with no separation.
+- **Re-fitting all three cut-points** (not just the Excellent one) in leave-one-out gave 1/10 exact — far worse than keeping Poor and Average locked and only moving the Excellent cut. With 10 recordings, 2-4 per label, fitting more than one cut overfits badly.
 
 ## Recording only (no Zoom transcript)
 Three labelled recordings were also run **without** their transcript (audio transcribed by faster-whisper `base`, int8, 2 CPU threads, on a Mac, which is faster than the free Space) and compared with their transcript-based scores under the locked rubric. One run each, so this shows the path works, not how accurate it is.

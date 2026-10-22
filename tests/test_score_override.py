@@ -28,14 +28,22 @@ def test_two_low_core_but_a_4_elsewhere_in_core_blocks_the_override():
     assert r["grade"] != "Poor" and r["override_reason"] is None
 
 
-def test_two_core_at_4_with_none_low_overrides_to_excellent():
-    # lesson_close/checklist pulled down so the weighted score (3.34) alone would read as Good
-    s = {**FULL, "rapport_start": 4, "warmth_energy": 4, "lesson_close": 2, "checklist": 2}
+def test_excellent_core_rule_fires_in_isolation():
+    # Below the locked weights, rapport+warmth both at 4 already pulls the weighted average to >=3.0
+    # on its own (0.22+0.25 = 0.47 of the 0.80 non-report-only weight), so this branch of the rule can
+    # never be observed actually CHANGING a sub-Excellent weighted grade at the current cut (3.0) -
+    # it only ever agrees with it. Test the rule directly instead of through compute_rating.
+    from qa.score import _core_rule
+
+    grade, present, low, fours = _core_rule({**FULL, "rapport_start": 4, "warmth_energy": 4})
+    assert grade == "Excellent" and low == [] and set(fours) == {"rapport_start", "warmth_energy"}
+
+
+def test_two_core_at_4_agrees_with_an_already_excellent_weighted_grade():
+    s = {**FULL, "rapport_start": 4, "warmth_energy": 4}  # weighted alone is already >= 3.0 here
     r = compute_rating(s)
     assert r["grade"] == "Excellent"
-    assert r["borderline"] == ("Good", "Excellent")
-    assert "no weaknesses at 2 or below" in r["override_reason"]
-    assert "suggests Good" in r["override_reason"]
+    assert r["override_reason"] is None  # rule agrees with the weighted grade, so there's nothing to explain
 
 
 def test_na_core_criterion_excluded_from_the_rule_not_counted_as_weak():

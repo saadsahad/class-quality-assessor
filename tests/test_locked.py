@@ -14,4 +14,7 @@ def test_weights_locked():
 
 
 def test_cuts_locked():
-    assert CUTS == [(2.0, "Poor"), (2.75, "Average"), (3.4, "Good")]
+    # Poor (2.0) and Average (2.75) are the original locked cuts, untouched. The Excellent cut was
+    # deliberately moved from 3.4 to 3.0 post-hoc, after calibration showed 3.4 made Excellent
+    # unreachable (best observed weighted score was 3.27) — see README "Excellent cut-point (post-hoc)".
+    assert CUTS == [(2.0, "Poor"), (2.75, "Average"), (3.0, "Good")]

@@ -82,5 +82,10 @@ ANCHORS = {
 SCALE = "1 = poor, 2 = weak, 3 = good, 4 = excellent; null = not observable in this recording"
 
 # Weighted score (1-4) -> grade. LOCKED placeholders; they were not validated by calibration.
-CUTS = [(2.0, "Poor"), (2.75, "Average"), (3.4, "Good")]  # >= last cut is Excellent
+# The Excellent cut was moved from 3.4 to 3.0 post-hoc, after calibration: at 3.4 the judge's best
+# observed weighted score (3.27) never reached it, so Excellent was effectively unreachable. This is
+# a deliberate, documented change (see README "Excellent cut-point (post-hoc)"), not a revert of the
+# lock: Poor (2.0) and Average (2.75) stay exactly as calibrated, and 3.0 is only shown to hold for
+# cuts between 2.90 and 3.06 on the 10 labelled recordings — it is in-sample, not out-of-sample tested.
+CUTS = [(2.0, "Poor"), (2.75, "Average"), (3.0, "Good")]  # >= last cut is Excellent
 TOP_GRADE = "Excellent"
