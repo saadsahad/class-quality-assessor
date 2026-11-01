@@ -1,6 +1,6 @@
 [server]
 maxUploadSize = 1000
-enableXsrfProtection = false  # uploads fail inside the Hugging Face iframe otherwise; see README
+enableXsrfProtection = true  # was false for the Hugging Face iframe; re-testing on Streamlit Cloud, see README
 headless = true
 
 [logger]
