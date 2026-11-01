@@ -1,6 +1,6 @@
 [server]
 maxUploadSize = 1000
-enableXsrfProtection = true  # was false for the Hugging Face iframe; re-testing on Streamlit Cloud, see README
+enableXsrfProtection = true  # was false for the Hugging Face iframe; tested on Streamlit Cloud 2026-11-01: uploads work with it on, see README
 headless = true
 
 [logger]
